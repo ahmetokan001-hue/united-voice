@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>United Voices — Choice Game</title>
+<style>
+    :root{
+      --bg:#0f172a; /* slate-900 */
+      --panel:#111827cc; /* gray-900/80 */
+      --card:#1f2937; /* gray-800 */
+      --text:#e5e7eb; /* gray-200 */
+      --muted:#9ca3af; /* gray-400 */
+      --accent:#22d3ee; /* cyan-400 */
+      --good:#22c55e; /* green-500 */
+      --warn:#eab308; /* yellow-500 */
+      --bad:#ef4444; /* red-500 */
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;
+      background: radial-gradient(1200px 600px at 70% -10%, #1f2937 0%, var(--bg) 60%);
+      color:var(--text);
+      display:flex; align-items:center; justify-content:center;
+    }
+    .game{ width:min(1100px, 96vw); height:min(720px, 92vh); display:grid; grid-template-rows: 56px 1fr 200px; gap:12px; }
+    header{ display:flex; align-items:center; justify-content:space-between; gap:8px }
+    .title{ font-weight:700; letter-spacing:0.3px; font-size:22px; display:flex; gap:8px; align-items:center }
+    .pill{padding:6px 10px; border-radius:999px; background:#0b1220; color:var(--muted); font-size:12px; border:1px solid #1f2937}
+    .panel{background:var(--panel); border:1px solid #374151; border-radius:16px; backdrop-filter: blur(8px);}
+
+    /* Scene area */
+    .scene{ display:grid; grid-template-columns: 260px 1fr; gap:12px; padding:14px;}
+    .cast{ background:linear-gradient(180deg, #111827 0%, #0b1220 100%); border-radius:12px; padding:12px; overflow:auto;}
+    .cast h3{margin:0 0 8px 0; font-size:14px; color:var(--muted); font-weight:600}
+    .character{display:flex; align-items:center; gap:10px; padding:9px; border-radius:10px; background:#0b1220; border:1px solid #1f2937; margin-bottom:8px; animation: pop 320ms ease both}
+    .avatar{width:36px; height:36px; border-radius:10px; display:grid; place-items:center; font-weight:700; color:black}
+    .avatar.player{background:#0ea5e9}
+    .avatar.bully{background:#ef4444}
+    .avatar.teacher{background:#22c55e}
+    .avatar.friend{background:#f59e0b}
+    .avatar.bystander{background:#a78bfa}
+    .character .meta{display:flex; flex-direction:column}
+    .character .name{font-weight:700;}
+    .character .role{font-size:12px; color:var(--muted)}
+
+    .stage{ position:relative; border-radius:12px; overflow:hidden; border:1px solid #1f2937; }
+    .stage::before{content:''; position:absolute; inset:0; background:radial-gradient(800px 400px at 60% -10%, #374151 0%, #0b1220 60%); opacity:0.6}
+    .stage .bg{ position:absolute; inset:0; background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="600"><defs><pattern id="p" width="32" height="32" patternUnits="userSpaceOnUse" patternTransform="skewX(-12)"><rect width="32" height="32" fill="%230b1220"/><path d="M0 16h32M16 0v32" stroke="%231f2937" stroke-width="1"/></pattern></defs><rect width="1200" height="600" fill="url(%23p)"/></svg>'); mix-blend:overlay; opacity:0.35}
+    .stage .content{ position:relative; height:100%; padding:24px; display:flex; flex-direction:column; justify-content:flex-end; }
+
+    .dialog{ background:rgba(17,24,39,0.85); border:1px solid #374151; border-radius:14px; padding:14px 16px; max-width: 92%; box-shadow:0 10px 24px rgba(0,0,0,0.35); animation: floatUp 340ms ease-out both }
+    .speaker{font-weight:800; font-size:14px; letter-spacing:.2px}
+    .line{margin-top:6px; font-size:18px; min-height:26px}
+
+    /* Choice area */
+    .choices{ padding:14px; display:flex; gap:10px; flex-wrap:wrap; align-items:flex-start }
+    .btn{ --ring: transparent; appearance:none; border:none; outline:none; cursor:pointer; color:var(--text); background:linear-gradient(180deg,#0ea5e9 0%,#0284c7 100%); padding:12px 14px; border-radius:12px; font-weight:700; letter-spacing:.2px; box-shadow:0 6px 0 #0c4a6e; transition:.12s transform, .12s box-shadow, .12s filter}
+    .btn:hover{ transform: translateY(-1px) }
+    .btn:active{ transform: translateY(2px); box-shadow:0 2px 0 #0c4a6e }
+    .btn.secondary{ background: linear-gradient(180deg, #6b7280 0, #4b5563 100%); box-shadow:0 6px 0 #374151 }
+    .btn.ghost{ background:#0b1220; border:1px solid #1f2937; box-shadow:none; font-weight:600 }
+
+    /* Footer / HUD */
+    footer.panel{ display:flex; align-items:center; justify-content:space-between; padding:10px 12px; gap:10px }
+    .meter{ display:flex; align-items:center; gap:8px }
+    .meter .bar{ width:200px; height:10px; background:#0b1220; border:1px solid #1f2937; border-radius:999px; overflow:hidden;}
+    .meter .fill{ height:100%; width:0%; background:linear-gradient(90deg, var(--good), var(--accent)); transition: width .3s ease }
+    .hud{ display:flex; gap:8px; align-items:center; color:var(--muted); font-size:13px; flex-wrap:wrap }
+    .tag{ border:1px solid #374151; background:#0b1220; padding:6px 10px; border-radius:999px }
+    .endcard{ text-align:center; padding:24px; animation: pop 320ms ease both }
+    .endcard h2{ margin:8px 0 0 0; font-size:28px }
+    .endcard p{ color:var(--muted) }
+
+    /* Scene transition */
+    .fade-enter{ opacity:0; transform: translateY(6px) scale(.99) }
+    .fade-enter-active{ opacity:1; transform: translateY(0) scale(1); transition: opacity .22s ease, transform .22s ease }
+
+    /* Tiny keyframe helpers */
+    @keyframes pop{ from{transform:scale(.95); opacity:0} to{transform:scale(1); opacity:1} }
+    @keyframes floatUp{ from{ transform: translateY(8px); opacity:0 } to{ transform: translateY(0); opacity:1 } }
+    @keyframes bob{ 0%,100%{ transform: translateY(0)} 50%{ transform: translateY(-2px)} }
+
+    /* ===== Sprites & Speech bubbles ===== */
+    .stage .layer{ position:absolute; inset:0; pointer-events:none }
+    .sprites{ position:absolute; inset:0; display:grid; grid-template-columns: repeat(12, 1fr); grid-template-rows: repeat(6, 1fr); padding:8px }
+    .sprite{ align-self:end; justify-self:center; width:140px; height:180px; filter: drop-shadow(0 8px 14px rgba(0,0,0,.45)); opacity:0; transform: translateY(12px) scale(.98); transition: opacity .25s ease, transform .25s ease }
+    .sprite.show{ opacity:1; transform: translateY(0) scale(1) }
+    .slot-left{ grid-column: 2 / span 2; grid-row: 3 / span 3 }
+    .slot-mid{ grid-column: 6 / span 2; grid-row: 3 / span 3 }
+    .slot-right{ grid-column: 10 / span 2; grid-row: 3 / span 3 }
+    .slot-farleft{ grid-column: 1 / span 2; grid-row: 3 / span 3 }
+    .slot-farright{ grid-column: 11 / span 2; grid-row: 3 / span 3 }
+
+    .speech{ position:absolute; max-width:60%; background:rgba(15,23,42,.95); border:1px solid #374151; border-radius:14px; padding:12px 14px; box-shadow:0 10px 24px rgba(0,0,0,.35); animation: floatUp 280ms ease-out both }
+    .speech .who{ font-weight:800; font-size:14px; letter-spacing:.2px }
+    .speech .text{ margin-top:6px; font-size:18px }
+    .speech.left{ left:120px; bottom:140px }
+    .speech.left::after{ content:""; position:absolute; left:-10px; bottom:16px; border-width:10px; border-style:solid; border-color:transparent #374151 transparent transparent }
+    .speech.right{ right:120px; bottom:140px }
+    .speech.right::after{ content:""; position:absolute; right:-10px; bottom:16px; border-width:10px; border-style:solid; border-color:transparent transparent transparent #374151 }
+
+    /* ===== Game Over Overlay ===== */
+    .overlay{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:linear-gradient(180deg,#0b1220cc,#0b1220f2); z-index:40 }
+    .overlay.show{ display:flex }
+    .modal{ width:min(780px,92vw); background:var(--panel); border:1px solid #374151; border-radius:18px; padding:22px }
+    .modal h2{ margin:0 0 8px 0; font-size:28px }
+    .scorebox{ display:flex; gap:12px; flex-wrap:wrap; margin:10px 0 }
+    .score{ border:1px solid #374151; border-radius:12px; padding:8px 12px; background:#0b1220 }
+    .modal .row{ display:flex; gap:8px; flex-wrap:wrap; margin-top:14px }
+
+    /* === Character Select Styles === */
+    .select-grid{ display:grid; grid-template-columns: repeat(3, minmax(140px,1fr)); gap:12px; margin-top:12px }
+    .avatarCard{ border:1px solid #374151; border-radius:14px; padding:10px; background:#0b1220; cursor:pointer; display:grid; place-items:center }
+    .avatarCard[aria-selected="true"]{ outline:3px solid var(--accent) }
+    .toneRow{ display:flex; gap:8px; margin-top:10px }
+    .tone{ width:28px; height:28px; border-radius:999px; border:1px solid #374151; cursor:pointer }
+    .tone[aria-selected="true"]{ outline:3px solid var(--accent) }
+
+    /* Player variants */
+    .sprite.player.variant-blue  .shirt{ fill:#38bdf8 }
+    .sprite.player.variant-purple .shirt{ fill:#a78bfa }
+    .sprite.player.variant-green .shirt{ fill:#4ade80 }
+    .sprite.player.variant-amber .shirt{ fill:#fbbf24 }
+
+    /* SVG sprite part colors */
+    .sprite .skin{ fill:#fed7aa }
+    .sprite .pants{ fill:#475569 }
+    .sprite .outline{ fill:none; stroke:#0b1220; stroke-width:2; opacity:.3 }
+    .sprite.player .shirt{ fill:#38bdf8 }
+    .sprite.bully .shirt{ fill:#f87171 }
+    .sprite.teacher .shirt{ fill:#4ade80 }
+    .sprite.friend .shirt{ fill:#fbbf24 }
+    .sprite.bystander .shirt{ fill:#a78bfa }
+
+    /* Skin tones */
+    .sprite.tone-1 .skin{ fill:#fde4cf }
+    .sprite.tone-2 .skin{ fill:#fcd5b5 }
+    .sprite.tone-3 .skin{ fill:#f1b980 }
+    .sprite.tone-4 .skin{ fill:#d8a072 }
+    .sprite.tone-5 .skin{ fill:#a56b43 }
+
+    @media (max-width: 900px){
+      .scene{ grid-template-columns: 1fr;}
+      .cast{ order:2; display:none }
+      .stage{ order:1 }
+    }
+  
+
+/* --- Responsive fit & player-scoped customizations --- */
+#fitwrap{width:100vw;height:100vh;overflow:hidden;display:flex;align-items:center;justify-content:center}
+.game{width:1100px !important;height:720px !important;transform-origin:top center}
+/* Keep speech bubbles visible and within stage */
+.speech{z-index:999;opacity:1}
+.speech.left{left:120px;bottom:140px}
+.speech.right{right:120px;bottom:140px}
+/* Player-only variant/tone palettes (extra specificity via [data-char="player"]) */
+.sprite[data-char="player"].variant-blue  .shirt{fill:#38bdf8}
+.sprite[data-char="player"].variant-purple .shirt{fill:#a78bfa}
+.sprite[data-char="player"].variant-green .shirt{fill:#4ade80}
+.sprite[data-char="player"].variant-amber .shirt{fill:#fbbf24}
+.sprite[data-char="player"].tone-1 .skin{fill:#fde4cf}
+.sprite[data-char="player"].tone-2 .skin{fill:#fcd5b5}
+.sprite[data-char="player"].tone-3 .skin{fill:#f1b980}
+.sprite[data-char="player"].tone-4 .skin{fill:#d8a072}
+.sprite[data-char="player"].tone-5 .skin{fill:#a56b43}
+/* Slightly shorter choices area while keeping proportions */
+.game{display:grid;grid-template-rows:56px 1fr 120px}
+</style>
+</head>
+<body>
+<div id="fitwrap"><div class="game">
+<!-- Character Select Overlay -->
+<div class="overlay show" id="charSelect">
+<div class="modal">
+<div class="pill">Welcome</div>
+<h2>Choose your character</h2>
+<label style="display:block; margin-top:8px; font-size:14px; color:var(--muted)">Name</label>
+<input id="nameInput" placeholder="Your name" style="width:100%; padding:10px 12px; border-radius:10px; border:1px solid #374151; background:#0b1220; color:var(--text)" type="text"/>
+<div style="display:flex; align-items:center; justify-content:space-between; margin-top:12px">
+<div class="pill">Avatar</div>
+<div class="pill">Pick a skin tone</div>
+</div>
+<div class="select-grid" id="variantGrid"></div>
+<div class="toneRow" id="toneRow"></div>
+<div class="row">
+<button class="btn" disabled="" id="startBtn">Start Game</button>
+</div>
+</div>
+</div>
+<!-- Game Over Overlay -->
+<div class="overlay" id="gameOver">
+<div class="modal">
+<div class="pill">Game Over</div>
+<h2 id="gameOverTitle">Thanks for playing!</h2>
+<p id="gameOverDesc" style="color:var(--muted)">You completed all episodes.</p>
+<div class="scorebox">
+<div class="score" id="scoreRespect">Respect: —</div>
+<div class="score" id="scoreEpisodes">Episodes: —</div>
+<div class="score" id="scoreScenes">Scenes viewed: —</div>
+</div>
+<div class="row">
+<button class="btn" id="playAgainBtn">Play Again</button>
+<button class="btn secondary" id="downloadPathBtn">Download Choices (JSON)</button>
+<button class="btn ghost" id="closeOverBtn">Close</button>
+</div>
+</div>
+</div>
+<header>
+<div class="title">United Voices — Interactive Choices <span class="pill" id="episodePill">Episode 1/3</span></div>
+<div style="display:flex; gap:8px; align-items:center">
+<div class="pill" id="sceneLabel">Scene: —</div>
+<button class="btn ghost" id="prevEpBtn" title="Previous episode">◀ Episode</button>
+<button class="btn ghost" id="nextEpBtn" title="Next episode">Episode ▶</button>
+</div>
+</header>
+<section aria-live="polite" class="panel scene">
+<aside aria-label="Cast list" class="cast">
+<h3>Cast</h3>
+<div id="castList"></div>
+</aside>
+<div class="stage">
+<div aria-hidden="true" class="bg"></div>
+<div class="content fade-enter" id="stageContent">
+<div class="layer sprites" id="spriteLayer"></div>
+<div class="layer" id="speechLayer"></div>
+</div>
+</div>
+</section>
+<section aria-label="Choices area" class="panel choices" id="choices"></section>
+<footer class="panel">
+<div aria-label="Respect meter" class="meter">
+<span style="font-size:12px; color:var(--muted)">Respect / Safety</span>
+<div aria-hidden="true" class="bar"><div class="fill" id="respectFill"></div></div>
+</div>
+<div class="hud">
+<span class="tag" id="pathTag">Path: —</span>
+<span class="tag" id="sceneCountTag">Scenes: 0</span>
+<button class="btn ghost" id="undoBtn" title="Undo last choice">Undo</button>
+<button class="btn secondary" id="restartBtn" title="Restart the story">Restart</button>
+</div>
+</footer>
+</div></div>
+<script>
+/*****************************************
+ * UNITED VOICES — CHOICE GAME ENGINE v2 *
+ *****************************************
+  New in v2:
+  - Animated scene transitions & dialog typewriter
+  - Episodes (3 mini-oyun): Gym, Cafeteria, Hallway (siber zorbalık)
+  - More characters: Friend, Bystander
+  - Respect meter persists across episode (optional)
+*/
+
+const state = {
+  started:false,
+  episodeIdx: 0,
+  sceneId: 'gym_intro',
+  respect: 50,
+  path: [],
+  stack: [],
+  scenesSeen: 0,
+  variant: 'blue', // blue | purple | green | amber
+  tone: 2,         // 1..5
+};
+
+const CHAR_STYLE = { player:'player', bully:'bully', teacher:'teacher', friend:'friend', bystander:'bystander' };
+
+const STORY = {
+  title: 'United Voices — Stand Up, Speak Kind',
+  characters: {
+    player:   { name: 'Player', role: 'You', style: CHAR_STYLE.player },
+    bully1:   { name: 'Bully 1', role: 'Peer', style: CHAR_STYLE.bully },
+    bully2:   { name: 'Bully 2', role: 'Peer', style: CHAR_STYLE.bully },
+    coach:    { name: 'Coach / Teacher', role: 'Adult Ally', style: CHAR_STYLE.teacher },
+    teacher:  { name: 'Teacher', role: 'Adult Ally', style: CHAR_STYLE.teacher },
+    friend:   { name: 'Friend', role: 'Peer Ally', style: CHAR_STYLE.friend },
+    bystander:{ name: 'Bystander', role: 'Witness', style: CHAR_STYLE.bystander },
+  },
+  scenes: {
+    /* ========== EPISODE 1 — GYM ========== */
+    gym_intro: { label:'School Gym', cast:['player','bully1','coach'],
+      line:{ speaker:'bully1', text:"We don't want you here, go away." },
+      choices:[
+        { id:'mirror',   text:'Do the same thing (retaliate)', impact:-20, next:'escalate_1' },
+        { id:'complain', text:'Complain without specifics',   impact:-5,  next:'complain_1' },
+        { id:'seekhelp', text:'Take help from your teacher',   impact:+15, next:'ally_1' },
+      ] },
+
+    escalate_1: { label:'Tension Rises', cast:['player','bully1'],
+      line:{ speaker:'player', text:"You push back with the same tone: 'You leave us alone.'" },
+      choices:[
+        { id:'escalate_more', text:'Keep arguing loudly', impact:-20, next:'bad_end' },
+        { id:'deescalate',    text:'Pause, breathe, use an I‑statement', impact:+10, next:'repair_1' },
+        { id:'ally',          text:'Bring in the coach calmly', impact:+15, next:'ally_1' },
+      ] },
+
+    complain_1: { label:'Complaint Corner', cast:['player','coach'],
+      line:{ speaker:'player', text:"Coach, they’re bothering me." },
+      choices:[
+        { id:'vague',  text:'Stay vague (no details)', impact:-5, next:'mixed_end' },
+        { id:'detail', text:'Describe behavior & impact', impact:+10, next:'ally_2' },
+        { id:'ignore', text:'Say it’s fine, I’ll ignore it', impact:-10, next:'bad_end' },
+      ] },
+
+    ally_1: { label:'Adult Ally Joins', cast:['player','bully1','coach'],
+      line:{ speaker:'coach', text:"Let’s hear both sides. Everyone deserves respect here." },
+      choices:[
+        { id:'i_statement', text:'Use I‑statement: “I feel unsafe when…”', impact:+15, next:'ally_2' },
+        { id:'evidence',    text:'Calmly describe what happened', impact:+10, next:'ally_2' },
+        { id:'walkaway',    text:'Walk away silently', impact:+0, next:'mixed_end' },
+      ] },
+
+    ally_2: { label:'Resolution Plan', cast:['player','bully1','coach'],
+      line:{ speaker:'coach', text:"We’ll set clear rules and check in later. Agreed?" },
+      choices:[
+        { id:'agree',   text:'Agree to ground rules', impact:+10, next:'good_end' },
+        { id:'neutral', text:'Stay quiet, nod', impact:+0, next:'mixed_end' },
+        { id:'reject',  text:'Reject the plan', impact:-15, next:'bad_end' },
+      ] },
+
+    repair_1: { label:'Repair Attempt', cast:['player','bully1'],
+      line:{ speaker:'player', text:"I feel upset when I’m excluded. Can we reset and try practice together?" },
+      choices:[
+        { id:'accept',   text:'Wait for response', impact:+5, next:'ally_2' },
+        { id:'rollback', text:'Forget it (back off)', impact:-10, next:'mixed_end' },
+      ] },
+
+    /* ========== EPISODE 2 — CAFETERIA ========== */
+    cafe_intro: { label:'Cafeteria', cast:['player','bully2','friend','bystander'],
+      line:{ speaker:'bully2', text:"No one will sit with you. Move." },
+      choices:[
+        { id:'humor',     text:'Use light humor to deflect', impact:+5, next:'cafe_humor' },
+        { id:'ally_friend', text:'Ask your friend to join you', impact:+10, next:'cafe_friend' },
+        { id:'retreat',   text:'Leave silently', impact:-5, next:'cafe_leave' },
+      ] },
+
+    cafe_humor: { label:'Deflection', cast:['player','bully2','bystander'],
+      line:{ speaker:'player', text:"This table’s big enough for all the lunches and the drama." },
+      choices:[
+        { id:'invite', text:'Invite a bystander to sit', impact:+10, next:'cafe_end_mix' },
+        { id:'push',   text:'Push back snarkily', impact:-10, next:'bad_end' },
+      ] },
+
+    cafe_friend: { label:'Ally Joins', cast:['player','friend','bully2'],
+      line:{ speaker:'friend', text:"I’ll sit with you. Everyone’s welcome at our table." },
+      choices:[
+        { id:'report', text:'Quietly report to staff', impact:+10, next:'cafe_end_good' },
+        { id:'gather', text:'Invite more peers over', impact:+5, next:'cafe_end_mix' },
+      ] },
+
+    cafe_leave: { label:'Leaving', cast:['player'],
+      line:{ speaker:'player', text:"I’m leaving…" },
+      choices:[
+        { id:'retry', text:'Try another table with a bystander', impact:+5, next:'cafe_end_mix' },
+        { id:'giveup', text:'Eat alone today', impact:-10, next:'bad_end' },
+      ] },
+
+    cafe_end_good: { ending:true, label:'Good Ending', cast:['player','friend','bystander'],
+      line:{ speaker:'friend', text:'Adults helped and people joined — safe table culture set.' },
+      resolve:(r)=> endingCard('Good Ending — Cafeteria', `Support network formed. Respect meter: ${r}%.`, 'good', 'cafe') },
+
+    cafe_end_mix: { ending:true, label:'Mixed Ending', cast:['player','bystander'],
+      line:{ speaker:'player', text:'It worked for now, but whispers remain.' },
+      resolve:(r)=> endingCard('Mixed Ending — Cafeteria', `Some progress. Keep modeling inclusion. Meter: ${r}%.`, 'warn', 'cafe') },
+
+    /* ========== EPISODE 3 — HALLWAY (CYBER) ========== */
+    hall_intro: { label:'Hallway / Phone', cast:['player','bully1','bystander'],
+      line:{ speaker:'bystander', text:"A mean post about you is spreading in the class chat." },
+      choices:[
+        { id:'screenshot', text:'Save screenshots as evidence', impact:+10, next:'hall_evidence' },
+        { id:'clapback',   text:'Reply with insult', impact:-20, next:'bad_end' },
+        { id:'mute',       text:'Mute chat & take a break', impact:+5, next:'hall_breathe' },
+      ] },
+
+    hall_evidence: { label:'Collect Evidence', cast:['player','bystander'],
+      line:{ speaker:'player', text:"I’ll save links, usernames, and time." },
+      choices:[
+        { id:'adult', text:'Share with counselor/teacher', impact:+15, next:'hall_plan' },
+        { id:'post',  text:'Post a warning story back', impact:-10, next:'mixed_end' },
+      ] },
+
+    hall_breathe: { label:'Regulate First', cast:['player'],
+      line:{ speaker:'player', text:"Breathing… I’ll respond when calm." },
+      choices:[
+        { id:'adult2', text:'Now ask an adult ally for help', impact:+10, next:'hall_plan' },
+        { id:'ignore2', text:'Ignore completely', impact:-5, next:'mixed_end' },
+      ] },
+
+    hall_plan: { label:'Action Plan', cast:['player','teacher'],
+      line:{ speaker:'teacher', text:"We’ll document, report, and support. Ready?" },
+      choices:[
+        { id:'yes', text:'Yes — proceed through official process', impact:+10, next:'good_end' },
+        { id:'half', text:'Maybe later', impact:+0, next:'mixed_end' },
+      ] },
+
+    /* ===== GENERIC ENDINGS (also reused) ===== */
+    good_end: { ending:true, label:'Good Ending', cast:['player','teacher','friend'],
+      line:{ speaker:'teacher', text:'Proud of the way you handled this. Safety plan in place.' },
+      resolve:(r)=> endingCard('Good Ending', `You used support and respectful language. Meter: ${r}%.`, 'good') },
+
+    mixed_end: { ending:true, label:'Mixed Ending', cast:['player'],
+      line:{ speaker:'player', text:'Conflict paused, but may return later.' },
+      resolve:(r)=> endingCard('Mixed Ending', `Partial progress. Consider naming behaviors and seeking allies. Meter: ${r}%.`, 'warn') },
+
+    bad_end: { ending:true, label:'Bad Ending', cast:['player','bully1'],
+      line:{ speaker:'bully1', text:'Things got worse. This feels unsafe now.' },
+      resolve:(r)=> endingCard('Bad Ending', `Escalation increased harm. Try de‑escalation or adult help. Meter: ${r}%.`, 'bad') },
+  }
+};
+
+// Episodes define entry scenes for each mini-game
+const EPISODES = [ 'gym_intro', 'cafe_intro', 'hall_intro' ];
+
+function $(sel){ return document.querySelector(sel); }
+const stageContent = $('#stageContent');
+const spriteLayer = $('#spriteLayer');
+const speechLayer = $('#speechLayer');
+const choicesEl = $('#choices');
+const castList = $('#castList');
+const respectFill = $('#respectFill');
+const sceneLabel = $('#sceneLabel');
+const undoBtn = $('#undoBtn');
+const restartBtn = $('#restartBtn');
+const episodePill = $('#episodePill');
+const prevEpBtn = $('#prevEpBtn');
+const nextEpBtn = $('#nextEpBtn');
+const sceneCountTag = $('#sceneCountTag');
+const gameOverEl = $('#gameOver');
+const playAgainBtn = $('#playAgainBtn');
+const closeOverBtn = $('#closeOverBtn');
+const downloadPathBtn = $('#downloadPathBtn');
+const scoreRespect = $('#scoreRespect');
+const scoreEpisodes = $('#scoreEpisodes');
+const scoreScenes = $('#scoreScenes');
+const gameOverTitle = $('#gameOverTitle');
+const gameOverDesc = $('#gameOverDesc');
+const charSelectEl = $('#charSelect');
+const startBtn = $('#startBtn');
+const nameInput = $('#nameInput');
+const variantGrid = $('#variantGrid');
+const toneRow = $('#toneRow');
+
+function clamp(n,min,max){ return Math.max(min, Math.min(max,n)); }
+function savePoint(){ state.stack.push({ episodeIdx: state.episodeIdx, sceneId: state.sceneId, respect: state.respect, path: [...state.path], scenesSeen: state.scenesSeen }); }
+
+function renderCast(scene){
+  castList.innerHTML = '';
+  (scene.cast||[]).forEach(key=>{
+    const c = STORY.characters[key]; if(!c) return;
+    const div = document.createElement('div');
+    div.className='character';
+    div.innerHTML = `
+      <div class="avatar ${c.style}">${c.name[0]}</div>
+      <div class="meta">
+        <div class="name">${c.name}</div>
+        <div class="role">${c.role}</div>
+      </div>`;
+    castList.appendChild(div);
+  });
+}
+
+// Simple sprite layout helper based on cast order
+function renderSprites(scene, speakerKey){
+  spriteLayer.innerHTML = '';
+  const slots = ['slot-left','slot-mid','slot-right','slot-farleft','slot-farright'];
+  (scene.cast||[]).forEach((key, idx)=>{
+    const c = STORY.characters[key]; if(!c) return;
+    const el = document.createElement('div');
+    const extra = (key==='player') ? ` variant-${state.variant} tone-${state.tone}` : '';
+    el.className = `sprite ${c.style} ${slots[idx]||'slot-right'}${extra}`;
+    if(key!=='player'){ el.classList.remove(`variant-${state.variant}`); el.classList.remove(`tone-${state.tone}`); }
+    el.setAttribute('data-char', key);
+    el.innerHTML = buildAvatarSVG();
+    spriteLayer.appendChild(el);
+    requestAnimationFrame(()=> el.classList.add('show'));
+  });
+  speechLayer.innerHTML = '';
+  if(speakerKey){
+    const idx = (scene.cast||[]).indexOf(speakerKey);
+    const side = (idx<=1) ? 'left' : 'right';
+    const bubble = document.createElement('div');
+    bubble.className = `speech ${side}`;
+    const c = STORY.characters[speakerKey] || { name:'—' };
+    bubble.innerHTML = `<div class="who">${c.name}</div><div class="text" id="bubbleText"></div>`;
+    speechLayer.appendChild(bubble);
+  }
+}
+
+function buildAvatarSVG(){
+  return `
+  <svg viewBox="0 0 120 160" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <circle class="skin" cx="60" cy="28" r="16"/>
+    <circle class="outline" cx="60" cy="28" r="16"/>
+    <rect class="skin" x="54" y="42" width="12" height="8" rx="3"/>
+    <rect class="shirt" x="34" y="50" width="52" height="44" rx="10"/>
+    <rect class="outline" x="34" y="50" width="52" height="44" rx="10"/>
+    <path class="skin" d="M36 56 q-10 16 6 28"/>
+    <path class="skin" d="M84 56 q10 16 -6 28"/>
+    <rect class="pants" x="40" y="94" width="18" height="36" rx="6"/>
+    <rect class="pants" x="62" y="94" width="18" height="36" rx="6"/>
+  </svg>`;
+}
+
+function typeLine(el, text, speed=16){
+  el.textContent = '';
+  let i=0; const id = setInterval(()=>{
+    el.textContent += text[i++] || '';
+    if(i>text.length){ clearInterval(id); }
+  }, speed);
+}
+
+function renderScene(){
+  const scene = STORY.scenes[state.sceneId];
+  sceneLabel.textContent = `Scene: ${scene?.label || '—'}`;
+  episodePill.textContent = `Episode ${state.episodeIdx+1}/${EPISODES.length}`;
+  renderCast(scene || {});
+  respectFill.style.width = clamp(state.respect,0,100) + '%';
+  sceneCountTag.textContent = `Scenes: ${++state.scenesSeen}`;
+
+  // Stage content
+  stageContent.classList.remove('fade-enter-active');
+  stageContent.classList.add('fade-enter');
+
+  if(scene?.ending){
+    spriteLayer.innerHTML = '';
+    speechLayer.innerHTML = '';
+    const card = scene.resolve ? scene.resolve(state.respect) : endingCard('The End','Thanks for playing.');
+    stageContent.innerHTML = '';
+    stageContent.appendChild(card);
+    choicesEl.innerHTML = '';
+
+    // If last episode ended -> show Game Over overlay; else show navigation
+    const lastEp = state.episodeIdx === EPISODES.length-1;
+    if(lastEp){
+      setTimeout(()=> showGameOver(scene.label), 350);
+      makeBtn('Restart All', ()=> restartAll(), 'secondary');
+    } else {
+      makeBtn('Play Again (Episode)', ()=> restartEpisode(), 'secondary');
+      makeBtn('Undo', ()=> undo(), 'ghost');
+      makeBtn('Next Episode ▶', ()=> nextEpisode());
+    }
+    requestAnimationFrame(()=> stageContent.classList.add('fade-enter-active'));
+    return;
+  }
+
+  // Render sprites & bubble
+  renderSprites(scene, scene.line.speaker);
+
+  // Update bubble text with typewriter
+  const bubbleTextEl = document.getElementById('bubbleText');
+  if(bubbleTextEl){ typeLine(bubbleTextEl, scene.line.text, 14); }
+
+  // Only sprite layer + speech bubble (no legacy dialog card)
+  stageContent.innerHTML = '';
+  stageContent.appendChild(spriteLayer);
+  stageContent.appendChild(speechLayer);
+
+  // Choices
+  choicesEl.innerHTML = '';
+  scene.choices.forEach((ch, idx)=>{
+    makeBtn(ch.text, ()=> choose(ch), undefined, idx===0);
+  });
+
+  requestAnimationFrame(()=> stageContent.classList.add('fade-enter-active'));
+}
+
+function endingCard(title, text, tone='good', arc){
+  const wrap = document.createElement('div');
+  wrap.className='endcard';
+  const color = tone==='good' ? 'var(--good)' : tone==='bad' ? 'var(--bad)' : 'var(--warn)';
+  wrap.innerHTML = `
+    <div class="pill" style="margin-inline:auto; width:max-content;">Outcome${arc?` · ${arc}`:''}</div>
+    <h2 style="color:${color}">${title}</h2>
+    <p>${text}</p>
+    <div style="margin-top:14px; font-size:13px; color:var(--muted)">Tip: Use Undo to explore different paths, or jump to the next episode.</div>
+  `;
+  return wrap;
+}
+
+function makeBtn(label, onClick, variant, autofocus=false){
+  const b = document.createElement('button');
+  b.className = 'btn ' + (variant||'');
+  b.textContent = label;
+  b.addEventListener('click', onClick);
+  if(autofocus){ setTimeout(()=> b.focus(), 0); }
+  choicesEl.appendChild(b);
+  return b;
+}
+
+function choose(ch){
+  savePoint();
+  state.respect = clamp(state.respect + (ch.impact||0), 0, 100);
+  state.path.push({ scene: state.sceneId, choice: ch.id });
+  state.sceneId = ch.next;
+  if(['good_end','mixed_end','bad_end','cafe_end_good','cafe_end_mix'].includes(state.sceneId)){
+    if(state.respect >= 75) state.sceneId = state.sceneId.includes('mix')? 'cafe_end_mix' : 'good_end';
+    else if(state.respect <= 25) state.sceneId = 'bad_end';
+    else state.sceneId = 'mixed_end';
+  }
+  renderScene();
+}
+
+function undo(){
+  const last = state.stack.pop(); if(!last) return;
+  state.episodeIdx = last.episodeIdx;
+  state.sceneId = last.sceneId;
+  state.respect = last.respect;
+  state.path = last.path;
+  state.scenesSeen = last.scenesSeen-1; // step back counter
+  renderScene();
+}
+
+function restartAll(){
+  state.episodeIdx = 0; state.sceneId = EPISODES[0];
+  state.respect = 50; state.path = []; state.stack = []; state.scenesSeen = 0;
+  renderScene();
+}
+
+function showCharSelect(){
+  // Build variants
+  const variants = ['blue','purple','green','amber'];
+  variantGrid.innerHTML = '';
+  variants.forEach(v=>{
+    const card = document.createElement('button');
+    card.type='button';
+    card.className='avatarCard';
+    card.setAttribute('data-variant', v);
+    card.innerHTML = `<div class="sprite player variant-${v}">${buildAvatarSVG()}</div><div style="margin-top:6px; font-size:12px; color:var(--muted)">${v}</div>`;
+    card.addEventListener('click', ()=> selectVariant(v, card));
+    variantGrid.appendChild(card);
+  });
+  // Build tone dots
+  toneRow.innerHTML = '';
+  for(let t=1;t<=5;t++){
+    const dot = document.createElement('button');
+    dot.type='button';
+    dot.className='tone';
+    dot.style.background = getComputedStyle(document.documentElement).getPropertyValue('--bg');
+    dot.addEventListener('click', ()=> selectTone(t, dot));
+    // preview color via helper class
+    const tmp = document.createElement('div'); tmp.className=`sprite tone-${t}`; tmp.innerHTML=buildAvatarSVG();
+    document.body.appendChild(tmp); const skin = tmp.querySelector('.skin'); const col = getComputedStyle(skin).fill; document.body.removeChild(tmp);
+    dot.style.background = col;
+    toneRow.appendChild(dot);
+  }
+  charSelectEl.classList.add('show');
+}
+
+function selectVariant(v, el){
+  state.variant = v;
+  [...variantGrid.children].forEach(c=> c.setAttribute('aria-selected','false'));
+  el.setAttribute('aria-selected','true');
+  checkStartEnabled();
+}
+
+function selectTone(t, el){
+  state.tone = t;
+  [...toneRow.children].forEach(c=> c.setAttribute('aria-selected','false'));
+  el.setAttribute('aria-selected','true');
+  checkStartEnabled();
+}
+
+function checkStartEnabled(){
+  startBtn.disabled = !(state.variant && state.tone && (nameInput.value.trim().length>0));
+}
+
+function startGame(){
+  state.started = true;
+  STORY.characters.player.name = nameInput.value.trim() || 'Player';
+  charSelectEl.classList.remove('show');
+  restartAll();
+}
+
+function restartEpisode(){
+  state.sceneId = EPISODES[state.episodeIdx];
+  state.path = []; state.stack = []; state.scenesSeen = 0;
+  renderScene();
+}
+
+function gotoEpisode(idx){
+  if(idx<0) idx = EPISODES.length-1; if(idx>=EPISODES.length) idx = 0;
+  state.episodeIdx = idx;
+  state.sceneId = EPISODES[idx];
+  state.path = []; state.stack = []; state.scenesSeen = 0;
+  renderScene();
+}
+
+function nextEpisode(){ gotoEpisode(state.episodeIdx+1); }
+function prevEpisode(){ gotoEpisode(state.episodeIdx-1); }
+
+function showGameOver(lastLabel){
+  scoreRespect.textContent = `Respect: ${state.respect}%`;
+  scoreEpisodes.textContent = `Episodes: ${EPISODES.length}`;
+  scoreScenes.textContent = `Scenes viewed: ${state.scenesSeen}`;
+  gameOverTitle.textContent = 'Game Over — All Episodes Complete';
+  gameOverDesc.textContent = `You reached an ending in "${lastLabel}" and finished the story arc.`;
+  gameOverEl.classList.add('show');
+}
+
+function hideGameOver(){ gameOverEl.classList.remove('show'); }
+
+function downloadChoices(){
+  const blob = new Blob([JSON.stringify({ path: state.path, respect: state.respect, time: new Date().toISOString() }, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'united-voices-path.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=> URL.revokeObjectURL(url), 1000);
+}
+
+undoBtn.addEventListener('click', undo);
+restartBtn.addEventListener('click', restartAll);
+nextEpBtn.addEventListener('click', nextEpisode);
+prevEpBtn.addEventListener('click', prevEpisode);
+playAgainBtn.addEventListener('click', ()=>{ hideGameOver(); restartAll(); });
+closeOverBtn.addEventListener('click', hideGameOver);
+downloadPathBtn.addEventListener('click', downloadChoices);
+nameInput.addEventListener('input', checkStartEnabled);
+startBtn.addEventListener('click', startGame);
+
+// Keyboard: 1..9 choose, U undo, R restart all, [ and ] episode nav
+window.addEventListener('keydown', (e)=>{
+  if(e.key>='1' && e.key<='9'){
+    const idx = Number(e.key)-1; const scene = STORY.scenes[state.sceneId];
+    if(scene?.choices?.[idx]) choose(scene.choices[idx]);
+  } else if(e.key==='u' || e.key==='U'){ undo(); }
+    else if(e.key==='r' || e.key==='R'){ restartAll(); }
+    else if(e.key===']'){ nextEpisode(); }
+    else if(e.key==='['){ prevEpisode(); }
+});
+
+// ---------- Lightweight Self Tests (console) ----------
+function runTests(){
+  const results = [];
+  const t = (name, ok, msg='')=> results.push({ test:name, ok, msg });
+
+  // Test 1: STORY minimal integrity
+  try{
+    t('Scenes exist', !!STORY.scenes && Object.keys(STORY.scenes).length>0);
+    t('Characters include player', !!STORY.characters.player);
+    t('Episodes reference valid scenes', EPISODES.every(id=> !!STORY.scenes[id]));
+  }catch(e){ t('STORY structure', false, e.message); }
+
+  // Test 2: buildAvatarSVG returns valid markup
+  try{
+    const div = document.createElement('div');
+    div.innerHTML = buildAvatarSVG();
+    t('Avatar has .skin circle', !!div.querySelector('.skin'));
+  }catch(e){ t('Avatar build', false, e.message); }
+
+  // Test 3: character select enables start button
+  try{
+    const prev = startBtn.disabled;
+    nameInput.value = 'Test';
+    state.variant = 'blue';
+    state.tone = 2;
+    checkStartEnabled();
+    t('Start enabled after selections', startBtn.disabled === false);
+    startBtn.disabled = prev; // restore
+  }catch(e){ t('Start enable logic', false, e.message); }
+
+  // Output
+  console.table(results);
+}
+
+// Init
+showCharSelect();
+runTests();
+</script>
+
+<script>(function(){
+  const BASE_W=1100, BASE_H=720;
+  const wrap=document.getElementById('fitwrap');
+  const game=document.querySelector('.game');
+  function fit(){
+    if(!game||!wrap) return;
+    const s=Math.min(window.innerWidth/BASE_W, window.innerHeight/BASE_H);
+    game.style.transform='scale('+s+')';
+    wrap.style.width=window.innerWidth+'px';
+    wrap.style.height=window.innerHeight+'px';
+  }
+  window.addEventListener('load',fit);
+  window.addEventListener('resize',fit);
+  window.addEventListener('orientationchange',fit);
+  setTimeout(fit,100);
+})();</script>
+</body>
+</html>
