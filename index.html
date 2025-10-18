@@ -365,9 +365,9 @@ const STORY = {
         { id:'giveup', text:'Eat alone today', impact:-10, next:'bad_end' },
       ] },
 
-    cafe_end_good: { ending:true, label:'Good Ending', cast:['player','friend','bystander'],
+    cafe_end_good: { ending:true, label:'Excellent Ending', cast:['player','friend','bystander'],
       line:{ speaker:'friend', text:'Adults helped and people joined — safe table culture set.' },
-      resolve:(r)=> endingCard('Good Ending — Cafeteria', `Support network formed. Respect meter: ${r}%.`, 'good', 'cafe') },
+      resolve:(r)=> endingCard('Excellent Ending — Cafeteria', `Support network formed. Respect meter: ${r}%.`, 'good', 'cafe') },
 
     cafe_end_mix: { ending:true, label:'Mixed Ending', cast:['player','bystander'],
       line:{ speaker:'player', text:'It worked for now, but whispers remain.' },
@@ -404,9 +404,9 @@ const STORY = {
       ] },
 
     /* ===== GENERIC ENDINGS ===== */
-    good_end: { ending:true, label:'Good Ending', cast:['player','teacher','friend'],
+    good_end: { ending:true, label:'Excellent Ending', cast:['player','teacher','friend'],
       line:{ speaker:'teacher', text:'Proud of the way you handled this. Safety plan in place.' },
-      resolve:(r)=> endingCard('Good Ending', `You used support and respectful language. Meter: ${r}%.`, 'good') },
+      resolve:(r)=> endingCard('Excellent Ending', `You used support and respectful language. Meter: ${r}%.`, 'good') },
 
     mixed_end: { ending:true, label:'Mixed Ending', cast:['player'],
       line:{ speaker:'player', text:'Conflict paused, but may return later.' },
